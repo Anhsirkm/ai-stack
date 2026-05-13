@@ -1,0 +1,49 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: aistack-postgres
+    environment:
+      POSTGRES_USER: aistack
+      POSTGRES_PASSWORD: aistack123
+      POSTGRES_DB: aistack
+    ports:
+      - "5432:5432"
+    volumes:
+      - D:/ai-stack/infra/postgres-data:/var/lib/postgresql/data
+      - D:/ai-stack/infra/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aistack"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: aistack-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: aistack-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - D:/ai-stack/infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: aistack-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+    volumes:
+      - D:/ai-stack/infra/grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
