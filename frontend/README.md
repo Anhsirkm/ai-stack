@@ -1,36 +1,76 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AI Stack — LLM Observability Portfolio
 
-## Getting Started
+A production-grade AI engineering portfolio project demonstrating eval harness, observability, and local LLM inference.
 
-First, run the development server:
+## Architecture
 
+## Stack
+
+- **Inference**: Ollama (gemma3:4b, nomic-embed-text) — fully local, no cloud API
+- **Orchestration**: LangGraph 0.2.28 with StateGraph
+- **Backend**: FastAPI 0.115 + Pydantic v2 + SQLAlchemy 2.0 async
+- **Database**: pgvector/pgvector:pg16 — vector search ready
+- **Cache**: Redis 7
+- **Observability**: OpenTelemetry + Prometheus + Grafana
+- **Evals**: Promptfoo 0.120.19
+- **CI**: GitHub Actions — blocks merge on eval regression
+- **Frontend**: Next.js 15 + Tailwind
+
+## Run locally (Mode A — fully offline)
+
+### Prerequisites
+- Docker Desktop
+- Ollama with gemma3:4b and nomic-embed-text pulled
+- Node.js 22+
+- Python 3.11+
+
+### Start infrastructure
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+docker compose up -d
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Start backend
+```bash
+cd backend
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Start frontend
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Open http://localhost:3000
 
-## Learn More
+## Eval methodology
 
-To learn more about Next.js, take a look at the following resources:
+10 baseline test cases across 4 failure categories:
+- **FORMAT** — instruction following, output structure
+- **FACTUAL** — verifiable fact accuracy
+- **RELEVANCE** — on-topic response
+- **REFUSAL** — model doesn't refuse benign queries
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Baseline: 10/10 (100%) on gemma3:4b
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+CI gate blocks merge if pass rate drops >2% from baseline.
 
-## Deploy on Vercel
+## Results
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Model | Pass Rate | Avg Latency | Tokens/sec |
+|-------|-----------|-------------|------------|
+| gemma3:4b | 100% | ~8s | ~4 |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Failure taxonomy
+
+See [evals/FAILURE_TAXONOMY.md](evals/FAILURE_TAXONOMY.md) for categorised failure modes from real runs.
+
+## Grafana dashboard
+
+Import [infra/grafana/dashboards/ai-metrics.json](infra/grafana/dashboards/ai-metrics.json) into Grafana at http://localhost:3001
+
+5 panels: tokens/sec, eval pass rate, request rate, latency p50/p95/p99, cost per 1K requests.
