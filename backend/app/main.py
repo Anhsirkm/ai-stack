@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import router
+from app.core.telemetry import instrument_fastapi, metrics_endpoint
 
 
 @asynccontextmanager
@@ -25,4 +26,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+instrument_fastapi(app)
 app.include_router(router, prefix="/api")
+
+
+@app.get("/metrics")
+async def metrics():
+    return metrics_endpoint()
