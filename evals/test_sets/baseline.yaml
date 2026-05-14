@@ -10,7 +10,7 @@
     message: "What is 2 + 2? Answer with just the number."
   assert:
     - type: contains
-      value: "4"
+      value: "INTENTIONALLY_BROKEN_XYZ123"
 
 - vars:
     message: "List exactly 3 colors. Use a numbered list."
