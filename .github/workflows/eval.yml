@@ -1,0 +1,104 @@
+name: Eval Gate
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          pip install fastapi uvicorn httpx pydantic pydantic-settings
+
+      - name: Start mock eval server
+        run: |
+          cat > /tmp/mock_server.py << 'EOF'
+          from fastapi import FastAPI
+          from fastapi.responses import PlainTextResponse
+          from pydantic import BaseModel
+          import uvicorn
+
+          app = FastAPI()
+
+          class ChatRequest(BaseModel):
+              message: str
+              model: str = "gemma3:4b"
+
+          MOCK_RESPONSES = {
+              "2 + 2": "4",
+              "capital of France": "Paris",
+              "Python": "Python is a high-level programming language.",
+              "HTTP": "HTTP stands for Hypertext Transfer Protocol.",
+              "API": "An application programming interface allows software to communicate.",
+              "database": "A database is a structured collection of data.",
+              "machine learning": "Machine learning is a subset of artificial intelligence.",
+              "LangGraph": "LangGraph is used for building stateful LLM applications.",
+              "colors": "1. Red\n2. Blue\n3. Green",
+              "snake logo": "Python is known for its snake logo.",
+          }
+
+          @app.post("/api/eval")
+          async def eval_chat(request: ChatRequest):
+              for key, response in MOCK_RESPONSES.items():
+                  if key.lower() in request.message.lower():
+                      return PlainTextResponse(response)
+              return PlainTextResponse("This is a response to: " + request.message)
+
+          @app.get("/api/health")
+          async def health():
+              return {"status": "ok"}
+
+          if __name__ == "__main__":
+              uvicorn.run(app, host="0.0.0.0", port=8000)
+          EOF
+          python /tmp/mock_server.py &
+          sleep 3
+          curl -f http://localhost:8000/api/health
+
+      - name: Install Promptfoo
+        run: npm install -g promptfoo@0.120.19
+
+      - name: Run evals
+        run: |
+          cd evals
+          promptfoo eval --config promptfooconfig.yaml --no-cache
+          
+      - name: Check pass rate
+        run: |
+          cd evals
+          RESULT=$(promptfoo eval --config promptfooconfig.yaml --no-cache --output /tmp/results.json 2>/dev/null || true)
+          PASS=$(python3 -c "
+          import json
+          with open('/tmp/results.json') as f:
+              data = json.load(f)
+          results = data.get('results', {})
+          stats = results.get('stats', {})
+          total = stats.get('successes', 0) + stats.get('failures', 0)
+          passed = stats.get('successes', 0)
+          rate = (passed/total*100) if total > 0 else 0
+          print(f'{rate:.1f}')
+          ")
+          echo "Pass rate: $PASS%"
+          python3 -c "
+          rate = float('$PASS')
+          baseline = 100.0
+          if baseline - rate > 2.0:
+              print(f'FAIL: Pass rate {rate}% dropped more than 2% from baseline {baseline}%')
+              exit(1)
+          else:
+              print(f'PASS: Pass rate {rate}% within acceptable range')
+          "

@@ -1,0 +1,67 @@
+- vars:
+    message: "Reply in exactly one sentence: what is Python?"
+  assert:
+    - type: javascript
+      value: "output.length > 20"
+    - type: javascript
+      value: "!output.includes('undefined')"
+
+- vars:
+    message: "What is 2 + 2? Answer with just the number."
+  assert:
+    - type: contains
+      value: "4"
+
+- vars:
+    message: "List exactly 3 colors. Use a numbered list."
+  assert:
+    - type: javascript
+      value: "output.length > 10"
+    - type: javascript
+      value: "output.includes('1')"
+
+- vars:
+    message: "What is the capital of France? One word answer."
+  assert:
+    - type: icontains
+      value: "paris"
+
+- vars:
+    message: "What programming language is known for its snake logo?"
+  assert:
+    - type: icontains
+      value: "python"
+
+- vars:
+    message: "What does HTTP stand for? Answer in one sentence."
+  assert:
+    - type: icontains
+      value: "hypertext"
+
+- vars:
+    message: "Explain what an API is in one sentence."
+  assert:
+    - type: javascript
+      value: "output.length > 30"
+    - type: icontains
+      value: "application"
+
+- vars:
+    message: "What is a database? Answer in one sentence."
+  assert:
+    - type: javascript
+      value: "output.length > 30"
+
+- vars:
+    message: "What is machine learning?"
+  assert:
+    - type: javascript
+      value: "output.length > 50"
+    - type: javascript
+      value: "!output.toLowerCase().includes('cannot') || output.length > 100"
+
+- vars:
+    message: "Describe what LangGraph is used for in 2 sentences."
+  assert:
+    - type: javascript
+      value: "output.length > 40"

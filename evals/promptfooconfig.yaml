@@ -1,0 +1,24 @@
+description: "AI Stack - LangGraph Pipeline Evals"
+
+prompts:
+  - "{{message}}"
+
+providers:
+  - id: http
+    config:
+      url: http://localhost:8000/api/eval
+      method: POST
+      headers:
+        Content-Type: application/json
+      body:
+        message: "{{message}}"
+        model: "gemma3:4b"
+
+tests: test_sets/baseline.yaml
+
+defaultTest:
+  options:
+    timeout: 60000
+
+evaluateOptions:
+  maxConcurrency: 1
