@@ -1,29 +1,15 @@
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
-from fastapi import FastAPI, Response
-import time
+from fastapi import Response
 
-# Resource
 resource = Resource.create({"service.name": "ai-stack-backend"})
-
-# Tracer provider
 provider = TracerProvider(resource=resource)
-
-# OTLP exporter — sends to Prometheus/Grafana stack
-otlp_exporter = OTLPSpanExporter(
-    endpoint="http://localhost:4318/v1/traces",
-)
-provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
 trace.set_tracer_provider(provider)
-
 tracer = trace.get_tracer("ai-stack")
 
-# Prometheus metrics
 REQUEST_COUNT = Counter(
     "ai_stack_requests_total",
     "Total requests",
@@ -50,7 +36,7 @@ EVAL_PASS_RATE = Histogram(
 )
 
 
-def instrument_fastapi(app: FastAPI):
+def instrument_fastapi(app):
     FastAPIInstrumentor.instrument_app(app)
 
 

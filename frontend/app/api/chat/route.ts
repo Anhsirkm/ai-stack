@@ -1,12 +1,16 @@
 import { NextRequest } from "next/server";
 
 export async function POST(req: NextRequest) {
-  const { message, model } = await req.json();
+  const { message, model, history } = await req.json();
 
   const backendRes = await fetch("http://localhost:8000/api/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, model: model || "gemma3:4b" }),
+    body: JSON.stringify({ 
+      message, 
+      model: model || "gemma3:4b",
+      history: history || []
+    }),
   });
 
   if (!backendRes.ok) {

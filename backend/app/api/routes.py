@@ -4,19 +4,28 @@ import httpx
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse, PlainTextResponse
 from pydantic import BaseModel
+from typing import List, Optional
 from app.core.config import settings
 from app.core.telemetry import tracer, record_inference
 
 router = APIRouter()
 
 
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
 class ChatRequest(BaseModel):
     message: str
     model: str = "gemma3:4b"
+    history: Optional[List[ChatMessage]] = []
 
 
-async def stream_ollama(message: str, model: str):
-    messages = [{"role": "user", "content": message}]
+async def stream_ollama(message: str, model: str, history: list):
+    messages = [{"role": m.role, "content": m.content} for m in history]
+    messages.append({"role": "user", "content": message})
+
     token_count = 0
     start = time.time()
     success = False
@@ -24,6 +33,7 @@ async def stream_ollama(message: str, model: str):
     with tracer.start_as_current_span("ollama_inference") as span:
         span.set_attribute("model", model)
         span.set_attribute("message_length", len(message))
+        span.set_attribute("history_length", len(history))
         try:
             async with httpx.AsyncClient(timeout=120.0) as client:
                 async with client.stream(
@@ -56,7 +66,7 @@ async def stream_ollama(message: str, model: str):
 @router.post("/chat")
 async def chat(request: ChatRequest):
     return StreamingResponse(
-        stream_ollama(request.message, request.model),
+        stream_ollama(request.message, request.model, request.history or []),
         media_type="text/event-stream",
         headers={"X-Accel-Buffering": "no"},
     )
